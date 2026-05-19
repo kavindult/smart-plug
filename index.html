@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Plug Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f8;
+    --muted: #6b6b80;
+    --accent: #00e5a0;
+    --accent2: #0066ff;
+    --warn: #ff6b35;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; }
+
+  h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  .dot.offline { background: var(--muted); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  main {
+    padding: 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--border2); }
+
+  .card-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-label svg { width: 14px; height: 14px; opacity: 0.6; }
+
+  .card-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .card-unit {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  .card-value.accent { color: var(--accent); }
+  .card-value.warn { color: var(--warn); }
+
+  .relay-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .relay-info { display: flex; flex-direction: column; gap: 4px; }
+  .relay-title { font-size: 14px; font-weight: 600; }
+  .relay-sub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .relay-badge {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .relay-badge.on {
+    background: rgba(0, 229, 160, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0, 229, 160, 0.3);
+  }
+
+  .relay-badge.off {
+    background: rgba(107, 107, 128, 0.12);
+    color: var(--muted);
+    border: 1px solid rgba(107, 107, 128, 0.3);
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+  }
+
+  .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  .meta-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .meta-value { font-family: var(--mono); font-size: 13px; color: var(--text); }
+
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover { color: var(--accent); border-color: rgba(0,229,160,0.3); }
+  .refresh-btn svg { width: 14px; height: 14px; }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-bar {
+    display: none;
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--warn);
+    margin-bottom: 24px;
+  }
+
+  .config-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+
+  .config-panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--muted);
+  }
+
+  .config-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .config-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  .config-field label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .config-field input {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .config-field input:focus { border-color: var(--accent); }
+
+  .connect-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  .connect-btn:hover { opacity: 0.85; }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.04) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 28px;
+    width: 80px;
+  }
+
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .timestamp-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .timestamp-bar svg { width: 14px; height: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+    </div>
+    <h1>Smart Plug Monitor</h1>
+  </div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+        <path d="M8 16H3v5"/>
+      </svg>
+      Refresh
+    </button>
+    <div class="status-pill">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="config-panel">
+    <h2>Supabase connection</h2>
+    <div class="config-row">
+      <div class="config-field">
+        <label>Project URL</label>
+        <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxx.supabase.co" />
+      </div>
+      <div class="config-field">
+        <label>Anon key</label>
+        <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..." />
+      </div>
+      <div class="config-field" style="max-width:160px;">
+        <label>Table name</label>
+        <input type="text" id="tableName" value="Energy_logs" />
+      </div>
+      <button class="connect-btn" onclick="saveAndFetch()">Connect</button>
+    </div>
+  </div>
+
+  <div class="error-bar" id="errorBar"></div>
+
+  <p class="section-label">Latest reading</p>
+
+  <div class="timestamp-bar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    <span style="font-family:var(--mono); font-size:12px; color:var(--muted);" id="timestampEl">—</span>
+  </div>
+
+  <div class="cards-grid">
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Voltage
+      </div>
+      <div class="card-value accent" id="voltage"><div class="skeleton"></div></div>
+      <span class="card-unit">V</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Current
+      </div>
+      <div class="card-value" id="current"><div class="skeleton"></div></div>
+      <span class="card-unit">A</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Power
+      </div>
+      <div class="card-value warn" id="power"><div class="skeleton"></div></div>
+      <span class="card-unit">W</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+        Frequency
+      </div>
+      <div class="card-value" id="frequency"><div class="skeleton"></div></div>
+      <span class="card-unit">Hz</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Energy
+      </div>
+      <div class="card-value accent" id="energy"><div class="skeleton"></div></div>
+      <span class="card-unit">kWh</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Power factor
+      </div>
+      <div class="card-value" id="pf"><div class="skeleton"></div></div>
+    </div>
+
+  </div>
+
+  <div class="relay-card">
+    <div class="relay-info">
+      <div class="relay-title">Relay state</div>
+      <div class="relay-sub" id="relaySubtext">Reading from Supabase...</div>
+    </div>
+    <div class="relay-badge off" id="relayBadge">—</div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-item">
+      <div class="meta-label">Row ID</div>
+      <div class="meta-value" id="rowId">—</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Auto-refresh</div>
+      <div class="meta-value" id="autoRefreshStatus">Every 10s</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Last synced</div>
+      <div class="meta-value" id="lastSynced">—</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const STORAGE_KEY = 'smartplug_config';
+
+function loadConfig() {
+  document.getElementById('supabaseUrl').value   = 'https://bxesddkjywnnqhtgvypc.supabase.co';
+  document.getElementById('supabaseKey').value   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4ZXNkZGtqeXdubnFodGd2eXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTg1MzgsImV4cCI6MjA5NDc3NDUzOH0.6e3nA-h16vAs5M4oY4HxIq6RLpR8XBTmXuW9x2HS6m4';
+  document.getElementById('tableName').value     = 'Energy_logs';
+}
+
+  function saveConfig() {
+    const cfg = {
+      url: document.getElementById('supabaseUrl').value.trim(),
+      key: document.getElementById('supabaseKey').value.trim(),
+      table: document.getElementById('tableName').value.trim()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    return cfg;
+  }
+
+  function saveAndFetch() {
+    saveConfig();
+    fetchData();
+  }
+
+  function getConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    } catch(e) { return {}; }
+  }
+
+  function setStatus(online) {
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    if (online) {
+      dot.classList.remove('offline');
+      txt.textContent = 'Live';
+    } else {
+      dot.classList.add('offline');
+      txt.textContent = 'Offline';
+    }
+  }
+
+  function showError(msg) {
+    const bar = document.getElementById('errorBar');
+    bar.style.display = 'block';
+    bar.textContent = '⚠ ' + msg;
+    setStatus(false);
+  }
+
+  function hideError() {
+    document.getElementById('errorBar').style.display = 'none';
+  }
+
+  function setVal(id, val, decimals = 2) {
+    const el = document.getElementById(id);
+    el.innerHTML = val !== null && val !== undefined ? parseFloat(val).toFixed(decimals) : '—';
+  }
+
+  async function fetchData() {
+    const cfg = getConfig();
+
+    if (!cfg.url || !cfg.key) {
+      showError('Enter your Supabase URL and API key above, then click Connect.');
+      return;
+    }
+
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+
+    const table = cfg.table || 'Energy_logs';
+    const endpoint = `${cfg.url}/rest/v1/${table}?select=*&order=created_at.desc&limit=1`;
+
+    try {
+      const res = await fetch(endpoint, {
+        headers: {
+          'apikey': cfg.key,
+          'Authorization': 'Bearer ' + cfg.key,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        showError('No data found in table "' + table + '". Make sure your ESP32 is sending data.');
+        btn.classList.remove('spinning');
+        return;
+      }
+
+      hideError();
+      const row = data[0];
+
+      setVal('voltage', row.voltage, 2);
+      setVal('current', row.current, 3);
+      setVal('power', row.power, 2);
+      setVal('frequency', row.frequency, 1);
+      setVal('energy', row.energy, 4);
+      setVal('pf', row.power_factor, 3);
+
+      const relayOn = row.relay_state === true || row.relay_state === 'true' || row.relay_state === 1;
+      const badge = document.getElementById('relayBadge');
+      const sub = document.getElementById('relaySubtext');
+      badge.textContent = relayOn ? 'ON' : 'OFF';
+      badge.className = 'relay-badge ' + (relayOn ? 'on' : 'off');
+      sub.textContent = relayOn ? 'Plug is energised' : 'Plug is de-energised';
+
+      document.getElementById('rowId').textContent = '#' + row.id;
+
+      if (row.created_at) {
+        const d = new Date(row.created_at);
+        document.getElementById('timestampEl').textContent = d.toLocaleString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+      }
+
+      document.getElementById('lastSynced').textContent = new Date().toLocaleTimeString('en-GB');
+      setStatus(true);
+
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.classList.remove('spinning');
+    }
+  }
+
+  loadConfig();
+
+  const cfg = getConfig();
+  if (cfg.url && cfg.key) {
+    fetchData();
+  } else {
+    setStatus(false);
+    document.getElementById('statusText').textContent = 'Not configured';
+  }
+
+  setInterval(fetchData, 10000);
+</script>
+</body>
+</html>
