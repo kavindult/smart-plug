@@ -3,603 +3,843 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Plug Dashboard</title>
+<title>EnerSight</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#07090f;--surface:#0e1119;--surface2:#151b27;--surface3:#1c2333;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#e8eaf2;--muted:#5a6070;--muted2:#8890a0;
+  --green:#22d98a;--green-dim:rgba(34,217,138,0.12);--green-glow:rgba(34,217,138,0.25);
+  --red:#ff4d6d;--red-dim:rgba(255,77,109,0.10);
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,0.10);
+  --fridge:#4da6ff;--kettle:#ff7c4d;--iron:#c084fc;--device:#22d98a;
+  --mono:'JetBrains Mono',monospace;--sans:'Outfit',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #1a1a24;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.12);
-    --text: #f0f0f8;
-    --muted: #6b6b80;
-    --accent: #00e5a0;
-    --accent2: #0066ff;
-    --warn: #ff6b35;
-    --mono: 'DM Mono', monospace;
-    --sans: 'Syne', sans-serif;
-  }
+/* ── PAGES ───────────────────────────────────── */
+.page{display:none;position:relative;z-index:1;min-height:100vh;}
+.page.active{display:block;}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    padding: 0;
-  }
+/* ── LANDING ─────────────────────────────────── */
+#pageLanding{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+#pageLanding::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.landing-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(34,217,138,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.landing-card{position:relative;z-index:1;text-align:center;max-width:480px;width:100%;padding:0 24px;animation:landingFade 0.8s ease both;}
+@keyframes landingFade{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+.landing-icon{width:72px;height:72px;background:var(--green);border-radius:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 28px;box-shadow:0 0 60px rgba(34,217,138,0.25);}
+.landing-icon svg{width:36px;height:36px;}
+.landing-title{font-size:52px;font-weight:800;letter-spacing:-0.04em;line-height:1;margin-bottom:10px;background:linear-gradient(135deg,#e8eaf2 30%,#22d98a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.landing-sub{font-size:15px;color:var(--muted2);margin-bottom:40px;font-weight:500;}
+.launch-btn{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#07090f;border:none;border-radius:14px;padding:16px 36px;font-family:var(--sans);font-size:16px;font-weight:700;cursor:pointer;transition:opacity 0.2s,transform 0.15s,box-shadow 0.2s;box-shadow:0 0 40px rgba(34,217,138,0.3);}
+.launch-btn:hover{opacity:0.9;transform:translateY(-2px);}
+.launch-btn:active{transform:scale(0.97);}
+.launch-btn svg{width:18px;height:18px;}
 
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 32px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
+/* ── AUTH ────────────────────────────────────── */
+#pageAuth{position:fixed;inset:0;z-index:99;display:none;align-items:center;justify-content:center;background:var(--bg);}
+#pageAuth.active{display:flex;}
+#pageAuth::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.auth-glow{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(34,217,138,0.06) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.auth-box{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border2);border-radius:24px;padding:40px;width:100%;max-width:420px;animation:landingFade 0.5s ease both;}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;justify-content:center;}
+.auth-logo-icon{width:38px;height:38px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.auth-logo-icon svg{width:20px;height:20px;}
+.auth-logo-name{font-size:22px;font-weight:800;letter-spacing:-0.03em;background:linear-gradient(135deg,#e8eaf2,#22d98a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.auth-field{margin-bottom:16px;}
+.auth-field label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;}
+.auth-field input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+.auth-field input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-dim);}
+.auth-btn{width:100%;background:var(--green);color:#07090f;border:none;border-radius:10px;padding:13px;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:opacity 0.2s,transform 0.1s;}
+.auth-btn:hover{opacity:0.88;}
+.auth-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.auth-error{display:none;background:var(--red-dim);border:1px solid rgba(255,77,109,0.3);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--red);margin-top:12px;}
+.auth-back{background:none;border:none;color:var(--muted2);font-family:var(--mono);font-size:11px;cursor:pointer;margin-top:16px;display:block;text-align:center;width:100%;transition:color 0.2s;}
+.auth-back:hover{color:var(--text);}
 
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+/* ── HEADER ──────────────────────────────────── */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:64px;border-bottom:1px solid var(--border);background:rgba(14,17,25,0.85);backdrop-filter:blur(14px);position:sticky;top:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.logo-icon{width:30px;height:30px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo-icon svg{width:16px;height:16px;}
+.logo-name{font-size:18px;font-weight:800;letter-spacing:-0.03em;background:linear-gradient(135deg,#e8eaf2,#22d98a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.live-pill{display:flex;align-items:center;gap:7px;background:var(--green-dim);border:1px solid var(--green-glow);border-radius:20px;padding:5px 13px;font-family:var(--mono);font-size:11px;color:var(--green);}
+.offline-pill{display:flex;align-items:center;gap:7px;background:var(--red-dim);border:1px solid rgba(255,77,109,0.3);border-radius:20px;padding:5px 13px;font-family:var(--mono);font-size:11px;color:var(--red);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:livePulse 1.8s infinite;}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
+.icon-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 13px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;transition:all 0.2s;}
+.icon-btn:hover{color:var(--text);border-color:var(--border2);}
+.icon-btn svg{width:13px;height:13px;}
+.icon-btn.spin svg{animation:spin 0.7s linear infinite;}
+.icon-btn.danger:hover{color:var(--red);border-color:rgba(255,77,109,0.4);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.user-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);}
+.user-dot{width:22px;height:22px;background:var(--green-dim);border:1px solid var(--green-glow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--green);font-weight:700;}
 
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+/* ── SIDEBAR LAYOUT ──────────────────────────── */
+.app-layout{display:flex;min-height:calc(100vh - 64px);}
+.sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:64px;height:calc(100vh - 64px);}
+.sidebar-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;padding:0 8px;margin-bottom:8px;}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--muted2);cursor:pointer;transition:all 0.2s;border:1px solid transparent;background:none;width:100%;text-align:left;}
+.sidebar-item:hover{background:var(--surface2);color:var(--text);}
+.sidebar-item.active{background:var(--surface2);color:var(--text);border-color:var(--border2);}
+.sidebar-item svg{width:15px;height:15px;flex-shrink:0;}
+.page-content{flex:1;min-width:0;}
 
-  .logo-icon svg { width: 18px; height: 18px; }
+/* ── MAIN CONTENT ────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.error-bar{display:none;background:var(--red-dim);border:1px solid rgba(255,77,109,0.25);border-radius:10px;padding:12px 16px;font-family:var(--mono);font-size:13px;color:var(--red);margin-bottom:20px;}
+main{padding:32px;}
 
-  h1 {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+/* hero */
+.hero-section{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:36px 40px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;animation:fadeUp 0.5s ease both;}
+.hero-label{font-family:var(--mono);font-size:11px;color:var(--muted2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;}
+.hero-power{font-size:80px;font-weight:800;letter-spacing:-0.05em;line-height:1;color:var(--text);}
+.hero-power .unit{font-size:30px;font-weight:400;color:var(--muted2);margin-left:6px;}
+.hero-meta{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.dq-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:500;}
+.dq-normal{background:var(--green-dim);color:var(--green);border:1px solid var(--green-glow);}
+.dq-warning{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,0.3);}
+.hero-right{display:flex;gap:14px;flex-wrap:wrap;}
+.stat-pill{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:18px 22px;min-width:130px;}
+.stat-pill-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+.stat-pill-val{font-size:24px;font-weight:700;letter-spacing:-0.02em;}
+.stat-pill-unit{font-size:13px;color:var(--muted2);margin-left:3px;}
 
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 6px 14px;
-  }
+/* appliance cards */
+.appliance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px;}
+.appliance-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:26px;position:relative;overflow:hidden;transition:border-color 0.35s,transform 0.2s,box-shadow 0.2s;animation:fadeUp 0.5s ease both;cursor:pointer;}
+.appliance-card:nth-child(1){animation-delay:0.05s;}.appliance-card:nth-child(2){animation-delay:0.10s;}.appliance-card:nth-child(3){animation-delay:0.15s;}
+.appliance-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.4);}
+.appliance-card.is-on{border-color:var(--card-color);}
+.card-glow{position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:50%;opacity:0;transition:opacity 0.4s;pointer-events:none;}
+.appliance-card.is-on .card-glow{opacity:0.07;}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.card-icon-wrap{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);transition:background 0.3s,border-color 0.3s;}
+.appliance-card.is-on .card-icon-wrap{border-color:var(--card-color);background:rgba(0,0,0,0.25);}
+.status-badge{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:0.05em;}
+.status-on{background:var(--green-dim);color:var(--green);border:1px solid var(--green-glow);}
+.status-off{background:rgba(90,96,112,0.15);color:var(--muted2);border:1px solid var(--border);}
+.status-dot{width:6px;height:6px;border-radius:50%;}
+.status-on .status-dot{background:var(--green);animation:livePulse 1.8s infinite;}
+.status-off .status-dot{background:var(--muted);}
+.card-name{font-size:19px;font-weight:700;letter-spacing:-0.02em;margin-bottom:3px;}
+.card-brand{font-size:12px;color:var(--muted2);font-family:var(--mono);}
+.card-power-row{display:flex;align-items:flex-end;justify-content:space-between;margin-top:22px;padding-top:22px;border-top:1px solid var(--border);}
+.card-power-val{font-size:44px;font-weight:800;letter-spacing:-0.04em;line-height:1;color:var(--muted);transition:color 0.3s;}
+.appliance-card.is-on .card-power-val{color:var(--card-color);}
+.card-power-unit{font-size:18px;font-weight:400;color:var(--muted2);margin-left:4px;margin-bottom:5px;}
+.card-rated-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;text-align:right;}
+.card-rated-val{font-family:var(--mono);font-size:13px;color:var(--muted2);text-align:right;}
+.power-bar-wrap{margin-top:16px;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.power-bar-fill{height:100%;border-radius:2px;background:var(--card-color);width:0%;transition:width 0.7s cubic-bezier(0.4,0,0.2,1);}
+.card-tap-hint{margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.card-tap-hint svg{width:11px;height:11px;}
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;display:inline-block;}
+@keyframes shimmer{to{background-position:-200% 0;}}
 
-  .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation: pulse 2s infinite;
-  }
+/* ── DETAIL PAGE ─────────────────────────────── */
+.detail-main{padding:32px;max-width:1100px;margin:0 auto;}
+.detail-hero{border-radius:22px;padding:32px 36px;margin-bottom:28px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;animation:fadeUp 0.4s ease both;}
+.detail-icon-wrap{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);}
+.detail-hero-left{display:flex;align-items:center;gap:20px;}
+.detail-name{font-size:28px;font-weight:800;letter-spacing:-0.03em;}
+.detail-brand{font-family:var(--mono);font-size:12px;color:var(--muted2);margin-top:3px;}
+.detail-stats{display:flex;gap:12px;flex-wrap:wrap;}
+.detail-stat{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 20px;min-width:110px;}
+.detail-stat-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+.detail-stat-val{font-size:22px;font-weight:700;letter-spacing:-0.02em;}
+.detail-stat-unit{font-size:12px;color:var(--muted2);margin-left:3px;}
+.range-tabs{display:flex;gap:6px;margin-bottom:20px;}
+.range-tab{font-family:var(--mono);font-size:12px;padding:7px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted2);cursor:pointer;transition:all 0.2s;}
+.range-tab:hover{color:var(--text);border-color:var(--border2);}
+.range-tab.active{background:var(--surface2);border-color:var(--border2);color:var(--text);font-weight:500;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:28px;margin-bottom:20px;animation:fadeUp 0.4s 0.1s ease both;}
+.chart-card-title{font-family:var(--mono);font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:20px;}
+.chart-wrap{position:relative;width:100%;height:280px;}
+.status-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:28px;animation:fadeUp 0.4s 0.15s ease both;}
+.status-timeline{display:flex;height:32px;border-radius:6px;overflow:hidden;margin-top:12px;gap:1px;}
+.chart-loading{display:flex;align-items:center;justify-content:center;height:280px;font-family:var(--mono);font-size:13px;color:var(--muted);}
 
-  .dot.offline { background: var(--muted); animation: none; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  main {
-    padding: 32px;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .section-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 32px;
-  }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    transition: border-color 0.2s;
-  }
-
-  .card:hover { border-color: var(--border2); }
-
-  .card-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .card-label svg { width: 14px; height: 14px; opacity: 0.6; }
-
-  .card-value {
-    font-family: var(--mono);
-    font-size: 28px;
-    font-weight: 500;
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .card-unit {
-    font-size: 13px;
-    color: var(--muted);
-    margin-left: 4px;
-  }
-
-  .card-value.accent { color: var(--accent); }
-  .card-value.warn { color: var(--warn); }
-
-  .relay-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 32px;
-  }
-
-  .relay-info { display: flex; flex-direction: column; gap: 4px; }
-  .relay-title { font-size: 14px; font-weight: 600; }
-  .relay-sub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-
-  .relay-badge {
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-  }
-
-  .relay-badge.on {
-    background: rgba(0, 229, 160, 0.12);
-    color: var(--accent);
-    border: 1px solid rgba(0, 229, 160, 0.3);
-  }
-
-  .relay-badge.off {
-    background: rgba(107, 107, 128, 0.12);
-    color: var(--muted);
-    border: 1px solid rgba(107, 107, 128, 0.3);
-  }
-
-  .meta-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 32px;
-  }
-
-  .meta-item { display: flex; flex-direction: column; gap: 4px; }
-  .meta-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  .meta-value { font-family: var(--mono); font-size: 13px; color: var(--text); }
-
-  .refresh-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .refresh-btn:hover { color: var(--accent); border-color: rgba(0,229,160,0.3); }
-  .refresh-btn svg { width: 14px; height: 14px; }
-  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .error-bar {
-    display: none;
-    background: rgba(255, 107, 53, 0.1);
-    border: 1px solid rgba(255, 107, 53, 0.3);
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--warn);
-    margin-bottom: 24px;
-  }
-
-  .config-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 32px;
-  }
-
-  .config-panel h2 {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--muted);
-  }
-
-  .config-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-end;
-    flex-wrap: wrap;
-  }
-
-  .config-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
-  .config-field label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-
-  .config-field input {
-    background: var(--bg);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .config-field input:focus { border-color: var(--accent); }
-
-  .connect-btn {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-  }
-
-  .connect-btn:hover { opacity: 0.85; }
-
-  .skeleton {
-    background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.04) 50%, var(--surface2) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: 4px;
-    height: 28px;
-    width: 80px;
-  }
-
-  @keyframes shimmer { to { background-position: -200% 0; } }
-
-  .timestamp-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .timestamp-bar svg { width: 14px; height: 14px; color: var(--muted); }
+/* ── DEVICE 01 PAGE ──────────────────────────── */
+.device-main{padding:32px;}
+.device-header-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+.device-title{font-size:24px;font-weight:800;letter-spacing:-0.03em;display:flex;align-items:center;gap:12px;}
+.device-badge{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 10px;color:var(--muted2);font-weight:400;}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;transition:border-color 0.2s,transform 0.2s;animation:fadeUp 0.4s ease both;}
+.metric-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.metric-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;}
+.metric-value{font-size:30px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--device);}
+.metric-unit{font-size:14px;font-weight:400;color:var(--muted2);margin-left:3px;}
+.device-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:28px;margin-bottom:20px;animation:fadeUp 0.4s 0.1s ease both;}
+.device-chart-title{font-family:var(--mono);font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.device-chart-wrap{position:relative;width:100%;height:260px;}
+.d-range-tabs{display:flex;gap:6px;}
+.d-range-tab{font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer;transition:all 0.2s;}
+.d-range-tab:hover{color:var(--text);border-color:var(--border2);}
+.d-range-tab.active{background:var(--surface2);border-color:var(--border2);color:var(--text);}
+.chart-loading-sm{display:flex;align-items:center;justify-content:center;height:260px;font-family:var(--mono);font-size:13px;color:var(--muted);}
+.device-synced{font-family:var(--mono);font-size:11px;color:var(--muted);}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-      </svg>
+<!-- ══ LANDING ═══════════════════════════════════ -->
+<div id="pageLanding">
+  <div class="landing-glow"></div>
+  <div class="landing-card">
+    <div class="landing-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#07090f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
     </div>
-    <h1>Smart Plug Monitor</h1>
-  </div>
-  <div style="display:flex; align-items:center; gap:12px;">
-    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-        <path d="M21 3v5h-5"/>
-        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-        <path d="M8 16H3v5"/>
-      </svg>
-      Refresh
+    <div class="landing-title">EnerSight</div>
+    <div class="landing-sub">Real-time appliance power disaggregation</div>
+    <button class="launch-btn" onclick="showAuth()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Get Started
     </button>
-    <div class="status-pill">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusText">Connecting...</span>
+  </div>
+</div>
+
+<!-- ══ AUTH ══════════════════════════════════════ -->
+<div id="pageAuth">
+  <div class="auth-glow"></div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#07090f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <span class="auth-logo-name">EnerSight</span>
+    </div>
+    <div class="auth-field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com"/></div>
+    <div class="auth-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••"/></div>
+    <button class="auth-btn" id="loginBtn" onclick="handleLogin()">Sign in</button>
+    <div class="auth-error" id="loginError"></div>
+    <button class="auth-back" onclick="backToLanding()">← Back to home</button>
+  </div>
+</div>
+
+<!-- ══ MAIN DASHBOARD ════════════════════════════ -->
+<div id="pageDashboard" class="page">
+  <header>
+    <div class="logo" onclick="goHome()">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#07090f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <span class="logo-name">EnerSight</span>
+    </div>
+    <div class="header-right">
+      <div id="statusPill" class="offline-pill"><div style="width:6px;height:6px;border-radius:50%;background:var(--red);"></div> Connecting…</div>
+      <div class="user-pill"><div class="user-dot" id="userInitial">?</div><span id="userEmail" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span></div>
+      <button class="icon-btn danger" onclick="handleLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+      <button class="icon-btn" id="refreshBtn" onclick="fetchDashboard()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-label">Navigation</div>
+      <button class="sidebar-item active" id="nav-home" onclick="switchSection('home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Main Dashboard
+      </button>
+      <button class="sidebar-item" id="nav-device01" onclick="switchSection('device01')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="1"/><circle cx="17" cy="12" r="1"/><circle cx="7" cy="12" r="1"/></svg>
+        Device 01
+      </button>
+    </nav>
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+      <!-- ── SECTION: MAIN DASHBOARD ── -->
+      <div id="sectionHome">
+        <main>
+          <div class="error-bar" id="errorBar"></div>
+          <div class="hero-section">
+            <div>
+              <div class="hero-label">Total Household Power</div>
+              <div class="hero-power">
+                <span id="totalPower"><span class="skeleton" style="width:160px;height:72px;"></span></span>
+                <span class="unit" id="totalUnit" style="display:none;">W</span>
+              </div>
+              <div class="hero-meta"><span id="dataQualityBadge"></span></div>
+            </div>
+            <div class="hero-right">
+              <div class="stat-pill">
+                <div class="stat-pill-label">Active loads</div>
+                <div class="stat-pill-val" style="color:var(--green);">
+                  <span id="activeCount"><span class="skeleton" style="width:28px;height:22px;"></span></span>
+                  <span class="stat-pill-unit">/ 3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="appliance-grid">
+            <!-- FRIDGE -->
+            <div class="appliance-card" id="card-fridge" style="--card-color:var(--fridge);" onclick="openDetail('fridge')">
+              <div class="card-glow" style="background:var(--fridge);"></div>
+              <div class="card-top">
+                <div class="card-icon-wrap">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="9" y1="6" x2="9" y2="8"/><line x1="9" y1="14" x2="9" y2="18"/></svg>
+                </div>
+                <div class="status-badge status-off" id="badge-fridge"><div class="status-dot"></div><span id="badgeText-fridge">OFF</span></div>
+              </div>
+              <div class="card-name">Refrigerator</div>
+              <div class="card-brand">Whirlpool Gen-X 240L · Titanium</div>
+              <div class="card-power-row">
+                <div><span class="card-power-val" id="power-fridge">—</span><span class="card-power-unit">W</span></div>
+                <div><div class="card-rated-label">Rated power</div><div class="card-rated-val">116 W</div></div>
+              </div>
+              <div class="power-bar-wrap"><div class="power-bar-fill" id="bar-fridge"></div></div>
+              <div class="card-tap-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>Tap to view history</div>
+            </div>
+            <!-- KETTLE -->
+            <div class="appliance-card" id="card-kettle" style="--card-color:var(--kettle);" onclick="openDetail('kettle')">
+              <div class="card-glow" style="background:var(--kettle);"></div>
+              <div class="card-top">
+                <div class="card-icon-wrap">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#ff7c4d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M4 19h16"/><path d="M6 19V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11"/><path d="M18 10h2a2 2 0 0 1 0 4h-2"/><path d="M10 6V4"/><path d="M14 6V4"/></svg>
+                </div>
+                <div class="status-badge status-off" id="badge-kettle"><div class="status-dot"></div><span id="badgeText-kettle">OFF</span></div>
+              </div>
+              <div class="card-name">Electric Kettle</div>
+              <div class="card-brand">Singer KA-PRISMA-1.2 · 1.2L</div>
+              <div class="card-power-row">
+                <div><span class="card-power-val" id="power-kettle">—</span><span class="card-power-unit">W</span></div>
+                <div><div class="card-rated-label">Rated power</div><div class="card-rated-val">1100 W</div></div>
+              </div>
+              <div class="power-bar-wrap"><div class="power-bar-fill" id="bar-kettle"></div></div>
+              <div class="card-tap-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>Tap to view history</div>
+            </div>
+            <!-- IRON -->
+            <div class="appliance-card" id="card-iron" style="--card-color:var(--iron);" onclick="openDetail('iron')">
+              <div class="card-glow" style="background:var(--iron);"></div>
+              <div class="card-top">
+                <div class="card-icon-wrap">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M3 17h18a1 1 0 0 0 1-1v-2a8 8 0 0 0-8-8H6a3 3 0 0 0-3 3v7z"/><path d="M3 17v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1"/></svg>
+                </div>
+                <div class="status-badge status-off" id="badge-iron"><div class="status-dot"></div><span id="badgeText-iron">OFF</span></div>
+              </div>
+              <div class="card-name">Dry Iron</div>
+              <div class="card-brand">Philips HD1172 · Linished Aluminium</div>
+              <div class="card-power-row">
+                <div><span class="card-power-val" id="power-iron">—</span><span class="card-power-unit">W</span></div>
+                <div><div class="card-rated-label">Rated power</div><div class="card-rated-val">1000 W</div></div>
+              </div>
+              <div class="power-bar-wrap"><div class="power-bar-fill" id="bar-iron"></div></div>
+              <div class="card-tap-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>Tap to view history</div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <!-- ── SECTION: DEVICE 01 ── -->
+      <div id="sectionDevice01" style="display:none;">
+        <div class="device-main">
+          <div class="device-header-bar">
+            <div class="device-title">
+              Device 01
+
+              <div id="d1StatusPill" class="offline-pill" style="font-size:11px;padding:4px 12px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:4px;display:inline-block;"></div>Connecting…</div>
+            </div>
+            <span class="device-synced" id="d1Synced">—</span>
+          </div>
+          <!-- METRIC CARDS -->
+          <div class="metrics-grid">
+            <div class="metric-card" style="animation-delay:0.00s;">
+              <div class="metric-label">Voltage</div>
+              <div><span class="metric-value" id="d1Voltage">—</span><span class="metric-unit">V</span></div>
+            </div>
+            <div class="metric-card" style="animation-delay:0.05s;">
+              <div class="metric-label">Current</div>
+              <div><span class="metric-value" id="d1Current">—</span><span class="metric-unit">A</span></div>
+            </div>
+            <div class="metric-card" style="animation-delay:0.10s;">
+              <div class="metric-label">Power</div>
+              <div><span class="metric-value" id="d1Power">—</span><span class="metric-unit">W</span></div>
+            </div>
+            <div class="metric-card" style="animation-delay:0.15s;">
+              <div class="metric-label">Energy</div>
+              <div><span class="metric-value" id="d1Energy">—</span><span class="metric-unit">kWh</span></div>
+            </div>
+            <div class="metric-card" style="animation-delay:0.20s;">
+              <div class="metric-label">Frequency</div>
+              <div><span class="metric-value" id="d1Frequency">—</span><span class="metric-unit">Hz</span></div>
+            </div>
+            <div class="metric-card" style="animation-delay:0.25s;">
+              <div class="metric-label">Power Factor</div>
+              <div><span class="metric-value" id="d1PF">—</span></div>
+            </div>
+          </div>
+          <!-- POWER CHART -->
+          <div class="device-chart-card">
+            <div class="device-chart-title">
+              <span>Power consumption over time</span>
+              <div class="d-range-tabs">
+                <button class="d-range-tab active" onclick="setD1Range('1H',this)">1H</button>
+                <button class="d-range-tab" onclick="setD1Range('6H',this)">6H</button>
+                <button class="d-range-tab" onclick="setD1Range('24H',this)">24H</button>
+                <button class="d-range-tab" onclick="setD1Range('7D',this)">7D</button>
+              </div>
+            </div>
+            <div class="device-chart-wrap">
+              <div class="chart-loading-sm" id="d1ChartLoading">Loading data…</div>
+              <canvas id="d1PowerChart" style="display:none;"></canvas>
+            </div>
+          </div>
+          <!-- CURRENT CHART -->
+          <div class="device-chart-card">
+            <div class="device-chart-title"><span>Current over time</span></div>
+            <div class="device-chart-wrap">
+              <div class="chart-loading-sm" id="d1VoltChartLoading">Loading data…</div>
+              <canvas id="d1VoltChart" style="display:none;"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end page-content -->
+  </div><!-- end app-layout -->
+</div><!-- end pageDashboard -->
+
+<!-- ══ DETAIL PAGE ═══════════════════════════════ -->
+<div id="pageDetail" class="page">
+  <header>
+    <div class="logo" onclick="goHome()">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#07090f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <span class="logo-name">EnerSight</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="showPage('pageDashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Back to dashboard
+      </button>
+    </div>
+  </header>
+  <div class="detail-main">
+    <div class="detail-hero" id="detailHero">
+      <div class="detail-hero-left">
+        <div class="detail-icon-wrap" id="detailIcon"></div>
+        <div><div class="detail-name" id="detailName">—</div><div class="detail-brand" id="detailBrand">—</div></div>
+      </div>
+      <div class="detail-stats">
+        <div class="detail-stat"><div class="detail-stat-label">Current power</div><div class="detail-stat-val"><span id="detailCurPower">—</span><span class="detail-stat-unit">W</span></div></div>
+        <div class="detail-stat"><div class="detail-stat-label">Status</div><div class="detail-stat-val" id="detailStatus">—</div></div>
+        <div class="detail-stat"><div class="detail-stat-label">Rated power</div><div class="detail-stat-val"><span id="detailRated">—</span><span class="detail-stat-unit">W</span></div></div>
+      </div>
+    </div>
+    <div class="range-tabs">
+      <button class="range-tab active" onclick="setRange('1H',this)">1H</button>
+      <button class="range-tab" onclick="setRange('6H',this)">6H</button>
+      <button class="range-tab" onclick="setRange('24H',this)">24H</button>
+      <button class="range-tab" onclick="setRange('7D',this)">7D</button>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Power consumption over time</div>
+      <div class="chart-wrap">
+        <div class="chart-loading" id="chartLoading">Loading data…</div>
+        <canvas id="powerChart" style="display:none;"></canvas>
+      </div>
+    </div>
+    <div class="status-chart-card">
+      <div class="chart-card-title">ON / OFF timeline</div>
+      <div class="status-timeline" id="statusTimeline"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="timelineStart">—</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:4px;vertical-align:middle;"></span>ON
+          <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--surface3);margin-left:10px;margin-right:4px;vertical-align:middle;"></span>OFF
+        </span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Now</span>
+      </div>
     </div>
   </div>
-</header>
-
-<main>
-
-  <div class="config-panel">
-    <h2>Supabase connection</h2>
-    <div class="config-row">
-      <div class="config-field">
-        <label>Project URL</label>
-        <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxx.supabase.co" />
-      </div>
-      <div class="config-field">
-        <label>Anon key</label>
-        <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..." />
-      </div>
-      <div class="config-field" style="max-width:160px;">
-        <label>Table name</label>
-        <input type="text" id="tableName" value="Energy_logs" />
-      </div>
-      <button class="connect-btn" onclick="saveAndFetch()">Connect</button>
-    </div>
-  </div>
-
-  <div class="error-bar" id="errorBar"></div>
-
-  <p class="section-label">Latest reading</p>
-
-  <div class="timestamp-bar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-    <span style="font-family:var(--mono); font-size:12px; color:var(--muted);" id="timestampEl">—</span>
-  </div>
-
-  <div class="cards-grid">
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        Voltage
-      </div>
-      <div class="card-value accent" id="voltage"><div class="skeleton"></div></div>
-      <span class="card-unit">V</span>
-    </div>
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        Current
-      </div>
-      <div class="card-value" id="current"><div class="skeleton"></div></div>
-      <span class="card-unit">A</span>
-    </div>
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
-        Power
-      </div>
-      <div class="card-value warn" id="power"><div class="skeleton"></div></div>
-      <span class="card-unit">W</span>
-    </div>
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
-        Frequency
-      </div>
-      <div class="card-value" id="frequency"><div class="skeleton"></div></div>
-      <span class="card-unit">Hz</span>
-    </div>
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Energy
-      </div>
-      <div class="card-value accent" id="energy"><div class="skeleton"></div></div>
-      <span class="card-unit">kWh</span>
-    </div>
-
-    <div class="card">
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Power factor
-      </div>
-      <div class="card-value" id="pf"><div class="skeleton"></div></div>
-    </div>
-
-  </div>
-
-  <div class="relay-card">
-    <div class="relay-info">
-      <div class="relay-title">Relay state</div>
-      <div class="relay-sub" id="relaySubtext">Reading from Supabase...</div>
-    </div>
-    <div class="relay-badge off" id="relayBadge">—</div>
-  </div>
-
-  <div class="meta-row">
-    <div class="meta-item">
-      <div class="meta-label">Row ID</div>
-      <div class="meta-value" id="rowId">—</div>
-    </div>
-    <div class="meta-item">
-      <div class="meta-label">Auto-refresh</div>
-      <div class="meta-value" id="autoRefreshStatus">Every 10s</div>
-    </div>
-    <div class="meta-item">
-      <div class="meta-label">Last synced</div>
-      <div class="meta-value" id="lastSynced">—</div>
-    </div>
-  </div>
-
-</main>
+</div>
 
 <script>
-  const STORAGE_KEY = 'smartplug_config';
+// ── CONFIG ─────────────────────────────────────────
+const SUPABASE_URL  = 'https://drkzbslpbuuotfndrdzo.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRya3pic2xwYnV1b3RmbmRyZHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4Njg4MDEsImV4cCI6MjA3OTQ0NDgwMX0.QFZov4V3OMSIttlPr7VbTpBUPY1x-wW-Lh2ctOvRzYc';
+const NILM_TABLE    = 'NILM_Predictions';
+const DEVICE1_TABLE = 'SensorReading08';
 
-function loadConfig() {
-  document.getElementById('supabaseUrl').value   = 'https://bxesddkjywnnqhtgvypc.supabase.co';
-  document.getElementById('supabaseKey').value   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4ZXNkZGtqeXdubnFodGd2eXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTg1MzgsImV4cCI6MjA5NDc3NDUzOH0.6e3nA-h16vAs5M4oY4HxIq6RLpR8XBTmXuW9x2HS6m4';
-  document.getElementById('tableName').value     = 'Energy_logs';
+const APPLIANCE_META = {
+  fridge:{name:'Refrigerator',brand:'Whirlpool Gen-X 240L · Titanium',color:'#4da6ff',rated:116,powerCol:'fridge_predicted_power',statusCol:'fridge_status'},
+  kettle:{name:'Electric Kettle',brand:'Singer KA-PRISMA-1.2 · 1.2L',color:'#ff7c4d',rated:1100,powerCol:'kettle_predicted_power',statusCol:'kettle_status'},
+  iron:{name:'Dry Iron',brand:'Philips HD1172 · Linished Aluminium',color:'#c084fc',rated:1000,powerCol:'iron_predicted_power',statusCol:'iron_status'}
+};
+const DETAIL_SVGS = {
+  fridge:'<svg viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="9" y1="6" x2="9" y2="8"/><line x1="9" y1="14" x2="9" y2="18"/></svg>',
+  kettle:'<svg viewBox="0 0 24 24" fill="none" stroke="#ff7c4d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M4 19h16"/><path d="M6 19V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11"/><path d="M18 10h2a2 2 0 0 1 0 4h-2"/><path d="M10 6V4"/><path d="M14 6V4"/></svg>',
+  iron:'<svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M3 17h18a1 1 0 0 0 1-1v-2a8 8 0 0 0-8-8H6a3 3 0 0 0-3 3v7z"/><path d="M3 17v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1"/></svg>'
+};
+
+let sbClient=null,currentSession=null,currentAppliance=null,currentRange='1H';
+let powerChartInst=null,d1PowerChartInst=null,d1VoltChartInst=null;
+let dashInterval=null,d1Interval=null,d1Range='1H';
+
+// ── INIT ───────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const { data:{ session } } = await sbClient.auth.getSession();
+  if (session) { currentSession=session; launchDashboard(session.user); }
+});
+
+// ── PAGE ROUTING ───────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
 }
 
-  function saveConfig() {
-    const cfg = {
-      url: document.getElementById('supabaseUrl').value.trim(),
-      key: document.getElementById('supabaseKey').value.trim(),
-      table: document.getElementById('tableName').value.trim()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-    return cfg;
-  }
+function showAuth() {
+  clearLoginFields();
+  const l=document.getElementById('pageLanding');
+  l.style.transition='opacity 0.4s ease'; l.style.opacity='0';
+  setTimeout(()=>{ l.style.display='none'; document.getElementById('pageAuth').classList.add('active'); },400);
+}
 
-  function saveAndFetch() {
-    saveConfig();
-    fetchData();
-  }
+function backToLanding() {
+  document.getElementById('pageAuth').classList.remove('active');
+  const l=document.getElementById('pageLanding');
+  l.style.display='flex'; l.style.opacity='0';
+  setTimeout(()=>{ l.style.opacity='1'; },10);
+}
 
-  function getConfig() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch(e) { return {}; }
-  }
+function goHome() {
+  clearInterval(dashInterval); clearInterval(d1Interval);
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pageAuth').classList.remove('active');
+  const l=document.getElementById('pageLanding');
+  l.style.display='flex'; l.style.opacity='0'; l.style.transition='opacity 0.4s ease';
+  setTimeout(()=>{ l.style.opacity='1'; },10);
+  window.scrollTo(0,0);
+}
 
-  function setStatus(online) {
-    const dot = document.getElementById('statusDot');
-    const txt = document.getElementById('statusText');
-    if (online) {
-      dot.classList.remove('offline');
-      txt.textContent = 'Live';
-    } else {
-      dot.classList.add('offline');
-      txt.textContent = 'Offline';
-    }
-  }
+// ── SIDEBAR SECTION SWITCH ─────────────────────────
+function switchSection(section) {
+  document.getElementById('sectionHome').style.display     = section==='home'     ? 'block' : 'none';
+  document.getElementById('sectionDevice01').style.display = section==='device01' ? 'block' : 'none';
+  document.getElementById('nav-home').classList.toggle('active',     section==='home');
+  document.getElementById('nav-device01').classList.toggle('active', section==='device01');
+  if (section==='device01') { fetchDevice1Latest(); fetchD1Chart(); }
+}
 
-  function showError(msg) {
-    const bar = document.getElementById('errorBar');
-    bar.style.display = 'block';
-    bar.textContent = '⚠ ' + msg;
+// ── AUTH ───────────────────────────────────────────
+function clearLoginFields() {
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPassword').value='';
+  document.getElementById('loginError').style.display='none';
+}
+
+async function handleLogin() {
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const errEl=document.getElementById('loginError');
+  const btn=document.getElementById('loginBtn');
+  errEl.style.display='none';
+  if (!email||!pass){showAuthErr(errEl,'Please enter your email and password.');return;}
+  btn.disabled=true; btn.textContent='Signing in…';
+  const {data,error}=await sbClient.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false; btn.textContent='Sign in';
+  if (error){showAuthErr(errEl,'Access denied. Invalid credentials.');return;}
+  currentSession=data.session;
+  document.getElementById('pageAuth').classList.remove('active');
+  launchDashboard(data.user);
+}
+
+async function handleLogout() {
+  clearInterval(dashInterval); clearInterval(d1Interval);
+  await sbClient.auth.signOut();
+  currentSession=null; clearLoginFields(); goHome();
+}
+
+function showAuthErr(el,msg){el.style.display='block';el.textContent='⚠ '+msg;}
+
+// ── LAUNCH ─────────────────────────────────────────
+function launchDashboard(user) {
+  const email=user.email||"";
+  document.getElementById("userInitial").textContent=email.charAt(0).toUpperCase();
+  document.getElementById("userEmail").textContent=email;
+  showPage("pageDashboard");
+  switchSection("home");
+  fetchDashboard();
+  clearInterval(dashInterval);
+  dashInterval=setInterval(fetchDashboard,5000);
+}
+
+
+
+// ── STATUS PILL ────────────────────────────────────
+function setStatus(online) {
+  const p=document.getElementById('statusPill');
+  p.className=online?'live-pill':'offline-pill';
+  p.innerHTML=online?'<div class="live-dot"></div> LIVE':'<div style="width:6px;height:6px;border-radius:50%;background:var(--red);"></div> Offline';
+}
+
+// ── APPLIANCE CARDS ────────────────────────────────
+function updateAppliance(name,statusRaw,powerRaw,ratedW) {
+  const isOn=(statusRaw||'').toString().trim().toUpperCase()==='ON';
+  const power=parseFloat(powerRaw)||0;
+  const card=document.getElementById('card-'+name);
+  const badge=document.getElementById('badge-'+name);
+  const btext=document.getElementById('badgeText-'+name);
+  const pEl=document.getElementById('power-'+name);
+  const bar=document.getElementById('bar-'+name);
+  if(isOn){card.classList.add('is-on');badge.className='status-badge status-on';btext.textContent='ON';}
+  else{card.classList.remove('is-on');badge.className='status-badge status-off';btext.textContent='OFF';}
+  pEl.textContent=isOn?power.toFixed(1):'0.0';
+  bar.style.width=isOn?Math.min((power/ratedW)*100,100)+'%':'0%';
+}
+
+// ── FETCH NILM DASHBOARD ───────────────────────────
+async function fetchDashboard() {
+  const btn=document.getElementById('refreshBtn');
+  btn.classList.add('spin');
+  try {
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/${NILM_TABLE}?select=*&order=id.desc&limit=1`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data||!data.length) throw new Error('No rows found in '+NILM_TABLE);
+    document.getElementById('errorBar').style.display='none';
+    setStatus(true);
+    const row=data[0];
+    const fp=parseFloat(row.fridge_predicted_power||0);
+    const kp=parseFloat(row.kettle_predicted_power||0);
+    const ip=parseFloat(row.iron_predicted_power||0);
+    document.getElementById('totalPower').textContent=(fp+kp+ip).toFixed(1);
+    document.getElementById('totalUnit').style.display='';
+    const active=[row.fridge_status,row.kettle_status,row.iron_status]
+      .filter(s=>(s||'').toString().trim().toUpperCase()==='ON').length;
+    document.getElementById('activeCount').textContent=active;
+    const dq=(row.data_quality||'unknown').toLowerCase();
+    const dqEl=document.getElementById('dataQualityBadge');
+    dqEl.className='dq-badge '+(dq==='normal'?'dq-normal':'dq-warning');
+    dqEl.textContent=(dq==='normal'?'✓ ':'⚠ ')+'Data quality: '+dq;
+    updateAppliance('fridge',row.fridge_status,fp,200);
+    updateAppliance('kettle',row.kettle_status,kp,1100);
+    updateAppliance('iron',row.iron_status,ip,1000);
+  } catch(err) {
     setStatus(false);
+    const eb=document.getElementById('errorBar');
+    eb.style.display='block'; eb.textContent='⚠  '+err.message;
+  } finally { btn.classList.remove('spin'); }
+}
+
+// ── FETCH DEVICE 01 LATEST ─────────────────────────
+async function fetchDevice1Latest() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${DEVICE1_TABLE}?select=id%2CTime%2CVoltage%2CCurrent%2CPower%2CEnergy%2CFrequency%2CPower-factor&order=id.desc&limit=1`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(!data||!data.length) throw new Error('No rows');
+    const row = data[0];
+    const set = (id, val, dec) => { const el = document.getElementById(id); el.textContent = (val != null && !isNaN(parseFloat(val))) ? parseFloat(val).toFixed(dec) : '—'; };
+    set('d1Voltage',   row['Voltage'],      1);
+    set('d1Current',   row['Current'],      3);
+    set('d1Power',     row['Power'],        1);
+    set('d1Energy',    row['Energy'],       3);
+    set('d1Frequency', row['Frequency'],    1);
+    set('d1PF',        row['Power-factor'], 2);
+    document.getElementById('d1Synced').textContent = 'Synced: ' + new Date().toLocaleTimeString('en-GB');
+    const pill = document.getElementById('d1StatusPill');
+    pill.className = 'live-pill'; pill.style.fontSize = '11px'; pill.style.padding = '4px 12px';
+    pill.innerHTML = '<div class="live-dot"></div> LIVE';
+  } catch(err) {
+    console.error('Device01:', err.message);
+    const pill = document.getElementById('d1StatusPill');
+    pill.className = 'offline-pill'; pill.style.fontSize = '11px'; pill.style.padding = '4px 12px';
+    pill.innerHTML = '<div style="width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:4px;display:inline-block;"></div> Offline';
   }
+}
 
-  function hideError() {
-    document.getElementById('errorBar').style.display = 'none';
+
+function setD1Range(range,btn) {
+  d1Range=range;
+  document.querySelectorAll('.d-range-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  fetchD1Chart();
+}
+
+function getD1RangeStart(range) {
+  const now=new Date();
+  if(range==='1H')  now.setHours(now.getHours()-1);
+  if(range==='6H')  now.setHours(now.getHours()-6);
+  if(range==='24H') now.setDate(now.getDate()-1);
+  if(range==='7D')  now.setDate(now.getDate()-7);
+  return now.toISOString();
+}
+
+function fmtLabel(ts,range) {
+  const d=new Date(ts);
+  if(range==='7D') return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+function makeLineChart(canvas,labels,values,color,unit) {
+  const hex=color;
+  const rgba=(h,a)=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;};
+  return new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[{data:values,borderColor:hex,borderWidth:2,pointRadius:labels.length>50?0:3,pointHoverRadius:5,pointBackgroundColor:hex,fill:true,
+      backgroundColor:(ctx)=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(hex,0.22));g.addColorStop(1,rgba(hex,0));return g;},tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#151b27',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,titleColor:'#8890a0',bodyColor:hex,
+        titleFont:{family:"'JetBrains Mono'"},bodyFont:{family:"'JetBrains Mono'",size:13},callbacks:{label:ctx=>' '+ctx.parsed.y.toFixed(2)+' '+unit}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6070',font:{family:"'JetBrains Mono'",size:10},maxTicksLimit:8,autoSkip:true}},
+               y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6070',font:{family:"'JetBrains Mono'",size:10},callback:v=>v+' '+unit},min:0}}}
+  });
+}
+
+async function fetchD1Chart() {
+  const since=getD1RangeStart(d1Range);
+  const limitMap={'1H':300,'6H':600,'24H':1200,'7D':2000};
+  const limit=limitMap[d1Range]||600;
+
+  // show loaders
+  ['d1ChartLoading','d1VoltChartLoading'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.style.display='flex'; el.textContent='Loading data…';
+  });
+  document.getElementById('d1PowerChart').style.display='none';
+  document.getElementById('d1VoltChart').style.display='none';
+
+  try {
+    const url=`${SUPABASE_URL}/rest/v1/${DEVICE1_TABLE}?select=Time,Power,Current&Time=gte.${since}&order=Time.asc&limit=${limit}`;
+    const res=await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    if(!rows||!rows.length){['d1ChartLoading','d1VoltChartLoading'].forEach(id=>{document.getElementById(id).textContent='No data for this time range.';});return;}
+    const maxPts=80;
+    let disp=rows;
+    if(rows.length>maxPts){const step=Math.floor(rows.length/maxPts);disp=rows.filter((_,i)=>i%step===0);}
+    const labels=disp.map(r=>fmtLabel(r.Time,d1Range));
+    const powers=disp.map(r=>parseFloat(r['Power']||0));
+    const currents=disp.map(r=>parseFloat(r['Current']||0));
+    document.getElementById('d1ChartLoading').style.display='none';
+    const pc=document.getElementById('d1PowerChart'); pc.style.display='block';
+    if(d1PowerChartInst){d1PowerChartInst.destroy();d1PowerChartInst=null;}
+    d1PowerChartInst=makeLineChart(pc,labels,powers,'#22d98a','W');
+    document.getElementById('d1VoltChartLoading').style.display='none';
+    const vc=document.getElementById('d1VoltChart'); vc.style.display='block';
+    if(d1VoltChartInst){d1VoltChartInst.destroy();d1VoltChartInst=null;}
+    d1VoltChartInst=makeLineChart(vc,labels,currents,'#4da6ff','A');
+  } catch(err){
+    ['d1ChartLoading','d1VoltChartLoading'].forEach(id=>{document.getElementById(id).textContent='⚠ '+err.message;});
   }
+}
 
-  function setVal(id, val, decimals = 2) {
-    const el = document.getElementById(id);
-    el.innerHTML = val !== null && val !== undefined ? parseFloat(val).toFixed(decimals) : '—';
+
+// ── NILM DETAIL PAGE ───────────────────────────────
+function openDetail(appKey) {
+  currentAppliance=appKey; currentRange='1H';
+  const meta=APPLIANCE_META[appKey];
+  document.getElementById('detailIcon').innerHTML=DETAIL_SVGS[appKey];
+  document.getElementById('detailName').textContent=meta.name;
+  document.getElementById('detailBrand').textContent=meta.brand;
+  document.getElementById('detailRated').textContent=meta.rated;
+  document.getElementById('detailHero').style.borderColor=meta.color;
+  const pEl=document.getElementById('power-'+appKey);
+  const bEl=document.getElementById('badgeText-'+appKey);
+  document.getElementById('detailCurPower').textContent=pEl?pEl.textContent:'—';
+  const st=bEl?bEl.textContent:'—';
+  const stEl=document.getElementById('detailStatus');
+  stEl.textContent=st; stEl.style.color=st==='ON'?'var(--green)':'var(--muted2)';
+  document.querySelectorAll('.range-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  showPage('pageDetail');
+  fetchDetailChart();
+}
+
+function setRange(range,btn) {
+  currentRange=range;
+  document.querySelectorAll('.range-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  fetchDetailChart();
+}
+
+function getRangeStart(range) {
+  const now=new Date();
+  if(range==='1H')  now.setHours(now.getHours()-1);
+  if(range==='6H')  now.setHours(now.getHours()-6);
+  if(range==='24H') now.setDate(now.getDate()-1);
+  if(range==='7D')  now.setDate(now.getDate()-7);
+  return now.toISOString();
+}
+
+function formatLabel(ts,range) {
+  const d=new Date(ts);
+  if(range==='7D') return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function fetchDetailChart() {
+  const meta=APPLIANCE_META[currentAppliance];
+  const since=getRangeStart(currentRange);
+  document.getElementById('chartLoading').style.display='flex';
+  document.getElementById('chartLoading').textContent='Loading data…';
+  document.getElementById('powerChart').style.display='none';
+  document.getElementById('statusTimeline').innerHTML='';
+  const limitMap={'1H':200,'6H':500,'24H':1000,'7D':2000};
+  const limit=limitMap[currentRange]||500;
+  try {
+    const url=`${SUPABASE_URL}/rest/v1/${NILM_TABLE}?select=timestamp,${meta.powerCol},${meta.statusCol}&timestamp=gte.${since}&order=timestamp.asc&limit=${limit}`;
+    const res=await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    if(!rows||!rows.length){document.getElementById('chartLoading').textContent='No data for this time range.';return;}
+    const maxPts=80;
+    let disp=rows;
+    if(rows.length>maxPts){const step=Math.floor(rows.length/maxPts);disp=rows.filter((_,i)=>i%step===0);}
+    const labels=disp.map(r=>formatLabel(r.timestamp,currentRange));
+    const values=disp.map(r=>parseFloat(r[meta.powerCol]||0));
+    document.getElementById('chartLoading').style.display='none';
+    const canvas=document.getElementById('powerChart');
+    canvas.style.display='block';
+    if(powerChartInst){powerChartInst.destroy();powerChartInst=null;}
+    const hex=meta.color;
+    const rgba=(h,a)=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;};
+    powerChartInst=new Chart(canvas,{type:'line',
+      data:{labels,datasets:[{data:values,borderColor:hex,borderWidth:2,pointRadius:disp.length>40?0:3,pointHoverRadius:5,pointBackgroundColor:hex,fill:true,
+        backgroundColor:(ctx)=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,280);g.addColorStop(0,rgba(hex,0.25));g.addColorStop(1,rgba(hex,0));return g;},tension:0.3}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#151b27',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,titleColor:'#8890a0',bodyColor:hex,
+          titleFont:{family:"'JetBrains Mono'"},bodyFont:{family:"'JetBrains Mono'",size:13},callbacks:{label:ctx=>' '+ctx.parsed.y.toFixed(1)+' W'}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6070',font:{family:"'JetBrains Mono'",size:10},maxTicksLimit:8,autoSkip:true}},
+                 y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6070',font:{family:"'JetBrains Mono'",size:10},callback:v=>v+' W'},min:0}}}});
+    const timeline=document.getElementById('statusTimeline');
+    rows.forEach(r=>{
+      const isOn=(r[meta.statusCol]||'').toString().trim().toUpperCase()==='ON';
+      const seg=document.createElement('div');
+      seg.style.flex='1';seg.style.background=isOn?meta.color:'#1c2333';seg.style.opacity=isOn?'0.85':'1';
+      timeline.appendChild(seg);
+    });
+    if(rows.length) document.getElementById('timelineStart').textContent=formatLabel(rows[0].timestamp,currentRange);
+  } catch(err) {
+    document.getElementById('chartLoading').textContent='⚠ '+err.message;
+    document.getElementById('chartLoading').style.display='flex';
   }
+}
 
-  async function fetchData() {
-    const cfg = getConfig();
-
-    if (!cfg.url || !cfg.key) {
-      showError('Enter your Supabase URL and API key above, then click Connect.');
-      return;
-    }
-
-    const btn = document.getElementById('refreshBtn');
-    btn.classList.add('spinning');
-
-    const table = cfg.table || 'Energy_logs';
-    const endpoint = `${cfg.url}/rest/v1/${table}?select=*&order=created_at.desc&limit=1`;
-
-    try {
-      const res = await fetch(endpoint, {
-        headers: {
-          'apikey': cfg.key,
-          'Authorization': 'Bearer ' + cfg.key,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      if (!data || data.length === 0) {
-        showError('No data found in table "' + table + '". Make sure your ESP32 is sending data.');
-        btn.classList.remove('spinning');
-        return;
-      }
-
-      hideError();
-      const row = data[0];
-
-      setVal('voltage', row.voltage, 2);
-      setVal('current', row.current, 3);
-      setVal('power', row.power, 2);
-      setVal('frequency', row.frequency, 1);
-      setVal('energy', row.energy, 4);
-      setVal('pf', row.power_factor, 3);
-
-      const relayOn = row.relay_state === true || row.relay_state === 'true' || row.relay_state === 1;
-      const badge = document.getElementById('relayBadge');
-      const sub = document.getElementById('relaySubtext');
-      badge.textContent = relayOn ? 'ON' : 'OFF';
-      badge.className = 'relay-badge ' + (relayOn ? 'on' : 'off');
-      sub.textContent = relayOn ? 'Plug is energised' : 'Plug is de-energised';
-
-      document.getElementById('rowId').textContent = '#' + row.id;
-
-      if (row.created_at) {
-        const d = new Date(row.created_at);
-        document.getElementById('timestampEl').textContent = d.toLocaleString('en-GB', {
-          day: '2-digit', month: 'short', year: 'numeric',
-          hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-      }
-
-      document.getElementById('lastSynced').textContent = new Date().toLocaleTimeString('en-GB');
-      setStatus(true);
-
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      btn.classList.remove('spinning');
-    }
+// auto-refresh device01 every 5s when visible
+setInterval(()=>{
+  if(document.getElementById('sectionDevice01').style.display!=='none' &&
+     document.getElementById('pageDashboard').classList.contains('active')) {
+    fetchDevice1Latest();
   }
-
-  loadConfig();
-
-  const cfg = getConfig();
-  if (cfg.url && cfg.key) {
-    fetchData();
-  } else {
-    setStatus(false);
-    document.getElementById('statusText').textContent = 'Not configured';
-  }
-
-  setInterval(fetchData, 10000);
+},5000);
 </script>
 </body>
 </html>
