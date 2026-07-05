@@ -398,7 +398,7 @@ main{padding:32px;}
           </div>
           <!-- CURRENT CHART -->
           <div class="device-chart-card">
-            <div class="device-chart-title"><span>Current over time</span></div>
+            <div class="device-chart-title"><span>Energy over time</span></div>
             <div class="device-chart-wrap">
               <div class="chart-loading-sm" id="d1VoltChartLoading">Loading data…</div>
               <canvas id="d1VoltChart" style="display:none;"></canvas>
@@ -718,7 +718,7 @@ async function fetchD1Chart() {
   document.getElementById('d1VoltChart').style.display='none';
 
   try {
-    const url=`${SUPABASE_URL}/rest/v1/${DEVICE1_TABLE}?select=Time,Power,Current&Time=gte.${since}&order=Time.asc&limit=${limit}`;
+    const url=`${SUPABASE_URL}/rest/v1/${DEVICE1_TABLE}?select=Time,Power,Energy&Time=gte.${since}&order=Time.asc&limit=${limit}`;
     const res=await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const rows=await res.json();
@@ -728,7 +728,7 @@ async function fetchD1Chart() {
     if(rows.length>maxPts){const step=Math.floor(rows.length/maxPts);disp=rows.filter((_,i)=>i%step===0);}
     const labels=disp.map(r=>fmtLabel(r.Time,d1Range));
     const powers=disp.map(r=>parseFloat(r['Power']||0));
-    const currents=disp.map(r=>parseFloat(r['Current']||0));
+    const energies=disp.map(r=>parseFloat(r['Energy']||0));
     document.getElementById('d1ChartLoading').style.display='none';
     const pc=document.getElementById('d1PowerChart'); pc.style.display='block';
     if(d1PowerChartInst){d1PowerChartInst.destroy();d1PowerChartInst=null;}
@@ -736,7 +736,7 @@ async function fetchD1Chart() {
     document.getElementById('d1VoltChartLoading').style.display='none';
     const vc=document.getElementById('d1VoltChart'); vc.style.display='block';
     if(d1VoltChartInst){d1VoltChartInst.destroy();d1VoltChartInst=null;}
-    d1VoltChartInst=makeLineChart(vc,labels,currents,'#4da6ff','A');
+    d1VoltChartInst=makeLineChart(vc,labels,energies,'#f5a623','kWh');
   } catch(err){
     ['d1ChartLoading','d1VoltChartLoading'].forEach(id=>{document.getElementById(id).textContent='⚠ '+err.message;});
   }
